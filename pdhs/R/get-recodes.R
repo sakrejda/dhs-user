@@ -15,6 +15,7 @@ get_manual_paths <- function() get_recode_manual_page() %>%
   file.path("https://www.dhsprogram.com", .)
 
 #' Download recode manuals
+#' @export
 download_manuals <- function(output_dir=static()) {
   manual_paths <- get_manual_paths() 
   manual_paths %>%  sapply(function(f) download.file(url=f, destfile=file.path(output_dir, basename(f))))

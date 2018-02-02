@@ -5,6 +5,7 @@
 #' @param path path to a file or vector of files to paths to unzip from.
 #' @param extension extension to filter for, no filtering if left unspecified.
 #' @param output_dir directory to write unzipped files to.
+#' @export
 filtered_unzip <- function(path, extension=NULL, output_dir=getwd()) {
   if (is.null(path)) stop("Must provide a source zip file or files.")
   if (length(path) != 0 && length(path) > 1) {

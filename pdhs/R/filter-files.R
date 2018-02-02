@@ -6,12 +6,14 @@
 #'
 #' @param s string to check for the extension
 #' @param e string specifying the extension.  
+#' @export
 has_extension <- function(s, e) ifelse(is.null(e), 
   rep(TRUE, length(s)), 
   grepl(pattern=paste0('\\.', e, '$'), x=s, ignore.case=TRUE))
 
 #' Check if a string has the .dta extension.
-# @param s string to check
+#' @param s string to check
+#' @export 
 is_dta <- function(s) has_extension(s, 'dta')
 
 #' Filter a path for DHS data file name elements.  Returns 
@@ -37,6 +39,7 @@ is_dta <- function(s) has_extension(s, 'dta')
 #'        'latest' as a special value.
 #' @param format file format CODE (not extension or name) to filter
 #'        with.
+#' @export
 filter_file_name <- function(path, country=TRUE, dataset=TRUE, round=TRUE, release=TRUE, format=TRUE) {
   if (!isTRUE(country))
     country <- country == extract_country_code(path)
@@ -61,6 +64,7 @@ filter_file_name <- function(path, country=TRUE, dataset=TRUE, round=TRUE, relea
 #'        to be used to filter out elements of the path.
 #' @return paths matching the conditions or a length-zero
 #'         character vector.
+#' @export
 filter_file_names <- function(path, pattern=NULL, ...) {
   if (!is.null(pattern)) 
     return(path[grepl(pattern=pattern, x=path)])

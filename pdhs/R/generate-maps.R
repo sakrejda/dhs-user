@@ -8,6 +8,7 @@ get_country_code_page <- function() xml2::read_html("https://dhsprogram.com/data
 #' Return a hacked-together named vector connecting country
 #' DHS codes to country names.
 #' @return a vector with codes for names and country names for values.
+#' @export
 get_country_code_map <- function() {
   package_static_dir <- static()
   map_file <- file.path(package_static_dir, 'country-code-map.rds')
@@ -33,6 +34,7 @@ get_dataset_type_page <- function() get_country_code_page()
 #' Return a hackeed-together named vector connecting country 
 #' DHS dataset types to their descriptions.
 #' @return a vector with codes for names and descriptions for values.
+#' @export
 get_dataset_type_map <- function() {
   package_static_dir <- static()
   map_file <- file.path(package_static_dir, 'dataset-type-map.rds')
@@ -54,6 +56,7 @@ get_dataset_type_map <- function() {
 #' their DHS codes.
 #' @return named vector with data format codes for names and
 #'         format names for values.
+#' @export
 get_file_format_map <- function() c(
   FL = "flat data file", SV = "SPSS data file",
   DT = "Stata data file", SD = "SAS data file")
@@ -62,6 +65,7 @@ get_file_format_map <- function() c(
 #' their DHS codes.
 #' @return named vector with data format codes for names and
 #'         format extensions for values.
+#' @export
 get_file_format_extension_map <- function() list(
   SV = c("SPS", "SAV"),
   DT = c("DCT", "DO", "DTA"),
