@@ -29,4 +29,12 @@ pdhs:::extract_dhs_round_code(file_name)
 pdhs:::extract_dhs_release_code(file_name)
 pdhs:::extract_format_code(file_name)
 
+#' There are also matching functions that go the other way:
+get_file_format_code('SAS', ignore.case=TRUE)
+get_dataset_type_code('Men', ignore.case=TRUE)
+get_country_code("people", ignore.case=TRUE)
+
+
+
+
 
