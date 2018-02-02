@@ -9,8 +9,8 @@ get_country_code_page <- function() xml2::read_html("https://dhsprogram.com/data
 #' DHS codes to country names.
 #' @return a vector with codes for names and country names for values.
 get_country_code_map <- function() {
-  session_tempdir <- tempdir()
-  map_file <- file.path(session_tempdir, 'country-code-map.rds')
+  package_static_dir <- static()
+  map_file <- file.path(package_static_dir, 'country-code-map.rds')
   if (file.exists(map_file)) {
     coding <- readRDS(map_file)
     return(coding)
@@ -34,8 +34,8 @@ get_dataset_type_page <- function() get_country_code_page()
 #' DHS dataset types to their descriptions.
 #' @return a vector with codes for names and descriptions for values.
 get_dataset_type_map <- function() {
-  session_tempdir <- tempdir()
-  map_file <- file.path(session_tempdir, 'dataset-type-map.rds')
+  package_static_dir <- static()
+  map_file <- file.path(package_static_dir, 'dataset-type-map.rds')
   if (file.exists(map_file)) {
     coding <- readRDS(map_file)
     return(coding)
