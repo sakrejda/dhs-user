@@ -11,3 +11,7 @@ scripts <- function() system.file('scripts', package='pdhs')
 static <- function() system.file('static', package='pdhs')
 
 
+#' Returns the package's examples directory (for the loaded
+#' version). 
+examples <- function() system.file('examples', package='pdhs')
+
