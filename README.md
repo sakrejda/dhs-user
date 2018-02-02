@@ -16,7 +16,8 @@ There's an example in `pdhs/inst/examples` in the repo and after you install
 you can find it by doing:
 
 ```
-dir(path=pdhs::examples())
+dir(pdhs:::examples(), full.names=TRUE)
 ```
 
+It's pretty simple and decently commented.
 
