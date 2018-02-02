@@ -6,6 +6,6 @@ Date: 2018-02-02
 Author: Krzysztof Sakrejda 
 Maintainer: Krzysztof Sakrejda <krzysztof@fawkes.io>
 Description: When downloaded DHS data comes in .zip files in a variety of formats and with relatively complex coding.  This package makes it straightforward to convert betteen codes an long names in R, download some meta-data and manuals, and, e.g., filter the .zip files during unzipping.
-Depends: xml2, rvest, lubridate, dplyr
+Depends: xml2, rvest, lubridate, dplyr, magrittr
 License: GPL-3
 RoxygenNote: 6.0.1
