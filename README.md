@@ -8,4 +8,11 @@ also some fragile code for downloading recode manuals and such.
 Ideally some of this might work against their API at some point but that's 
 not an immediate goal.
 
+Install for the moment using devtools:
+
+```
+ devtools::install_github(repo='sakrejda/dhs-user', subdir='pdhs')
+```
+
+
 
