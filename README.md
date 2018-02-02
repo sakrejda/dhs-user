@@ -12,12 +12,12 @@ Install for the moment using devtools:
 
 The package expects to be able to write some data in it's install directory (yes that's sub-optimal, no I'm not fixing it now) so install it in a local library rather than a system-wide location.
 
-There's an example in `pdhs/inst/examples` in the repo and after you install
-you can find it by doing:
+There are also examples in `pdhs/inst/examples` in the repo and after you install
+you can find them by doing:
 
 ```
 dir(pdhs:::examples(), full.names=TRUE)
 ```
 
-It's pretty simple and decently commented.
+They're pretty simple and decently commented. The `extract.R` example has a basic workflow and the other examples go through some use of the helper functions.
 
