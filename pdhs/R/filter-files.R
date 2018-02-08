@@ -65,15 +65,50 @@ filter_file_name <- function(path, country=TRUE, dataset=TRUE, round=TRUE, relea
 #' @return paths matching the conditions or a length-zero
 #'         character vector.
 #' @export
-filter_file_names <- function(path, pattern=NULL, ...) {
+filter_file_names <- function(path, pattern=NULL, latest=FALSE, ...) {
+  null_or_condition <- function(x) if (isTRUE(is.null(x))) {
+    return(TRUE)
+  } else { return(x) }
+
   if (!is.null(pattern)) 
     return(path[grepl(pattern=pattern, x=path)])
-  o <- vector(mode='character', length=0)
-  for (p in path) {
-    if (filter_file_name(p, ...))
-      o <- c(o, p)
+  if (missing(...) && !latest) {
+    return(path)
   }
-  return(o)
+  file_data <- data.frame(path=path, country = extract_country_code(path), 
+    dataset_type = extract_dataset_type_code(path),
+    round = extract_dhs_round_code(path), 
+    release <- extract_dhs_release_code(path),
+    format = extract_format_code(path))
+  if (missing(...) && latest) {
+    file_data <- file_data %>%
+      dplyr::group_by(country, dataset_type, round, format) %>% 
+      dplyr::filter(release == max(release))
+    return(file_data[['path']])
+  }
+  if (isTRUE(latest)) {
+    file_data <- file_data %>% 
+      dplyr::group_by(country, dataset_type, round, format) %>% 
+      dplyr::filter(
+        country == null_or_condition(as.list(...)[['country']]), 
+        dataset_type == null_or_condition(as.list(...)[['dataset_type']]),
+        round == null_or_condition(as.list(...)[['round']]),
+        release == max(release),
+        format == null_or_condition(as.list(...)[['format']]))
+    return(file_data[['path']])
+  }
+  if (!isTRUE(latest)) { 
+    file_data <- file_data %>% 
+      dplyr::group_by(country, dataset_type, round, format) %>% 
+      dplyr::filter(
+        country == null_or_condition(as.list(...)[['country']]), 
+        dataset_type == null_or_condition(as.list(...)[['dataset_type']]),
+        round == null_or_condition(as.list(...)[['round']]),
+        release == null_or_condition(as.list(...)[['release']]),
+        format == null_or_condition(as.list(...)[['format']]))
+    return(file_data[['path']])
+  }
+  stop("Something is rotten in Denmark.")
 }
 
 
