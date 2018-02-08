@@ -9,10 +9,8 @@
 #' @export
 get_file_format_code <- function(s, ...) {
   map <- get_file_format_map()
-  options <- names(map)
-  names(options) <- map
-  matches <- grepl(pattern=s, x=map, ...)
-  return(options[matches])
+  o <- search_reverse_map(s, map, ...)
+  return(o)
 }
 
 #' Retrieves the file format extension based on
@@ -39,10 +37,8 @@ get_file_format_extensions <- function(s, ...) {
 #' @export
 get_dataset_type_code <- function(s, ...) {
   map <- get_dataset_type_map()
-  options <- names(map)
-  names(options) <- map
-  matches <- grepl(pattern=s, x=map, ...)
-  return(options[matches])
+  o <- search_reverse_map(s, map, ...)
+  return(o)
 }
 
 
@@ -56,9 +52,7 @@ get_dataset_type_code <- function(s, ...) {
 #' @export
 get_country_code <- function(s, ...) {
   map <- get_country_code_map()
-  options <- names(map)
-  names(options) <- map
-  matches <- grepl(pattern=s, x=map, ...)
-  return(options[matches])
+  o <- search_reverse_map(s, map, ...)
+  return(o)
 }
 
