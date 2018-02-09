@@ -6,7 +6,7 @@
 a regex pattern or based on DHS codes.  For full details
 of code-based filtering see ?filter_file_name}
 \usage{
-filter_file_names(path, pattern = NULL, ...)
+filter_file_names(path, pattern = NULL, latest = FALSE, ...)
 }
 \arguments{
 \item{path}{path or vector of paths to files to filter
@@ -20,7 +20,18 @@ paths matching the conditions or a length-zero
         character vector.
 }
 \description{
-Takes a path or vector of paths and filters either using
-a regex pattern or based on DHS codes.  For full details
-of code-based filtering see ?filter_file_name
+Filter a path for DHS data file name elements.  Returns 
+true for path items that match the requested elements and
+false for those that don't.  The match considers the 
+position of the element in the filename so it's not a straight
+regex.
+}
+\details{
+To avoid situations with unreliable filtering (e.g.-try typing
+"Lao People's Democratic Republic" reliably/repeatedly) this
+function relies on the DHS codes for countries, data formats, 
+etc... to get these use the functions 'get_country_code', 
+'get_dataset_type_code', 'get_file_format_extensions', 
+'get_file_format_code'.  Those functions to loose string matching
+via regex.
 }

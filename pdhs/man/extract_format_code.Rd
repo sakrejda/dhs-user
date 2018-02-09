@@ -2,7 +2,7 @@
 % Please edit documentation in R/extract-codes.R
 \name{extract_format_code}
 \alias{extract_format_code}
-\title{For a filename 'file', extract the data format code (7th and 9th characters).}
+\title{For a filename 'file', extract the data format code (7th and 8th characters).}
 \usage{
 extract_format_code(file)
 }
@@ -10,5 +10,5 @@ extract_format_code(file)
 \item{file}{filename to extract from.}
 }
 \description{
-For a filename 'file', extract the data format code (7th and 9th characters).
+For a filename 'file', extract the data format code (7th and 8th characters).
 }
