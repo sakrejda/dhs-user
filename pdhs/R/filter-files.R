@@ -16,6 +16,18 @@ has_extension <- function(s, e) ifelse(is.null(e),
 #' @export 
 is_dta <- function(s) has_extension(s, 'dta')
 
+
+#' Allow NULL to evaluate as TRUE for filtering to play
+#' nice with missing(...)
+#' 
+#' @param x either NULL or a vector.  
+#' @return either NULL -> TRUE or non-NULL -> self
+null_or_compare <- function(x, y) if (is.null(x)) return(TRUE) else return(x == y)
+
+#' Takes a path or vector of paths and filters either using
+#' a regex pattern or based on DHS codes.  For full details
+#' of code-based filtering see ?filter_file_name 
+#'
 #' Filter a path for DHS data file name elements.  Returns 
 #' true for path items that match the requested elements and
 #' false for those that don't.  The match considers the 
@@ -30,34 +42,6 @@ is_dta <- function(s) has_extension(s, 'dta')
 #' 'get_file_format_code'.  Those functions to loose string matching
 #' via regex.
 #'
-#' @param path single path or vector of paths to filter against.
-#' @param country country CODE (not name) to filter with.
-#' @param dataset dataset type CODE to filter with.
-#' @param round round number (e.g.-3 for DHS-III).
-#' @param release release version code (not always numeric, varies 
-#'        by round and country). This function should really support
-#'        'latest' as a special value.
-#' @param format file format CODE (not extension or name) to filter
-#'        with.
-#' @export
-filter_file_name <- function(path, country=TRUE, dataset=TRUE, round=TRUE, release=TRUE, format=TRUE) {
-  if (!isTRUE(country))
-    country <- country == extract_country_code(path)
-  if (!isTRUE(dataset))
-    dataset <- dataset == extract_dataset_type_code(path)
-  if (!isTRUE(round))
-    round <- round == extract_dhs_round_code(path)
-  if (!isTRUE(release))
-    release <- release == extract_dhs_release_code(path)
-  if (!isTRUE(format))
-    format <- format == extract_format_code(path)
-  return(country & dataset & round & release & format)
-}
-
-#' Takes a path or vector of paths and filters either using
-#' a regex pattern or based on DHS codes.  For full details
-#' of code-based filtering see ?filter_file_name 
-#'
 #' @param path path or vector of paths to files to filter
 #'        out.  
 #' @param either NULL (for code based filtering) or a regex
@@ -66,21 +50,18 @@ filter_file_name <- function(path, country=TRUE, dataset=TRUE, round=TRUE, relea
 #'         character vector.
 #' @export
 filter_file_names <- function(path, pattern=NULL, latest=FALSE, ...) {
-  null_or_condition <- function(x) if (isTRUE(is.null(x))) {
-    return(TRUE)
-  } else { return(x) }
+  have_dots <- !missing(...)
+  if (have_dots) {
+    dots <- list(...)
+  }
 
   if (!is.null(pattern)) 
-    return(path[grepl(pattern=pattern, x=path)])
-  if (missing(...) && !latest) {
+    path = path[grepl(pattern=pattern, x=path)]
+  if (!have_dots && !latest) {
     return(path)
   }
-  file_data <- data.frame(path=path, country = extract_country_code(path), 
-    dataset_type = extract_dataset_type_code(path),
-    round = extract_dhs_round_code(path), 
-    release <- extract_dhs_release_code(path),
-    format = extract_format_code(path))
-  if (missing(...) && latest) {
+  file_data <- process_filenames(path) 
+  if (!have_dots && isTRUE(latest)) {
     file_data <- file_data %>%
       dplyr::group_by(country, dataset_type, round, format) %>% 
       dplyr::filter(release == max(release))
@@ -90,22 +71,22 @@ filter_file_names <- function(path, pattern=NULL, latest=FALSE, ...) {
     file_data <- file_data %>% 
       dplyr::group_by(country, dataset_type, round, format) %>% 
       dplyr::filter(
-        country == null_or_condition(as.list(...)[['country']]), 
-        dataset_type == null_or_condition(as.list(...)[['dataset_type']]),
-        round == null_or_condition(as.list(...)[['round']]),
+        null_or_compare(dots[['country']], country), 
+        null_or_compare(dots[['dataset_type']], dataset_type), 
+        null_or_compare(dots[['round']], round), 
         release == max(release),
-        format == null_or_condition(as.list(...)[['format']]))
+        null_or_compare(dots[['format']], format)) %>%
+      dplyr::summarise(path=last(path)) 
     return(file_data[['path']])
   }
   if (!isTRUE(latest)) { 
     file_data <- file_data %>% 
-      dplyr::group_by(country, dataset_type, round, format) %>% 
       dplyr::filter(
-        country == null_or_condition(as.list(...)[['country']]), 
-        dataset_type == null_or_condition(as.list(...)[['dataset_type']]),
-        round == null_or_condition(as.list(...)[['round']]),
-        release == null_or_condition(as.list(...)[['release']]),
-        format == null_or_condition(as.list(...)[['format']]))
+        null_or_compare(dots[['country']], country), 
+        null_or_compare(dots[['dataset_type']], dataset_type), 
+        null_or_compare(dots[['round']], round), 
+        null_or_compare(dots[['release']], release), 
+        null_or_compare(dots[['format']], format))
     return(file_data[['path']])
   }
   stop("Something is rotten in Denmark.")

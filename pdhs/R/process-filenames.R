@@ -49,21 +49,29 @@ extract_format <- function(file) {
 #' Extract all filename components into meaningful strings
 #' using the more specific functions.  
 #' 
-#' @param file name to extract from.
+#' @param path path to file to extract from.
 #' @return a named vector with the translated long-form
 #'         file name components.
 #' @export
-process_filename <- function(file) {
-  o = c(basename(file), extract_country(file),
-    extract_dataset_type(file), extract_dhs_round(file),
-    extract_dhs_release(file), extract_format(file),
-    use.names=FALSE)
-  names(o) <- c('file_name', 'country', 'type',
-    'round', 'release', 'format')
-  return(o)
-}
+process_filenames <- function(path) data.frame(
+    path=path, 
+    stub = extract_survey_stub(path) %>% as.character,
+    country = extract_country_code(path) %>% as.character, 
+    dataset_type = extract_dataset_type_code(path) %>% as.character,
+    round = extract_dhs_round_code(path) %>% as.character, 
+    release = extract_dhs_release_code(path) %>% as.character,
+    format = extract_format_code(path) %>% as.character, 
+    stringsAsFactors=FALSE)
 
-
-
-
-
+#' Specialize for just one path element, error otherwise.
+#' @param path path to file to extract from.
+#' @return a named vector with the translated long-form
+#'         file name components.
+#' @export
+process_filename <- function(path) {
+  if (isTRUE(length(path) != 1)) {
+    stop("Multiple paths so you want 'process_filenames'")
+  } else {
+    return(process_filenames(path)[1,])
+  } 
+} 

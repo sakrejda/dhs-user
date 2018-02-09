@@ -1,4 +1,8 @@
 
+#' For a filename 'file', extract the stub (first 8 characters) 
+#' 
+#' @param file filename to extract from.
+extract_survey_stub <- function(file) basename(file) %>% substr(start=1, stop=8)
 
 #' For a filename 'file', extract the country code (first two characters).
 #' 
@@ -20,7 +24,7 @@ extract_dhs_round_code <- function(file) basename(file) %>% substr(start=5, stop
 #' @param file filename to extract from.
 extract_dhs_release_code <- function(file) basename(file) %>% substr(start=6, stop=6)
 
-#' For a filename 'file', extract the data format code (7th and 9th characters).
+#' For a filename 'file', extract the data format code (7th and 8th characters).
 #' 
 #' @param file filename to extract from.
 extract_format_code <- function(file) basename(file) %>% substr(start=7, stop=8)
