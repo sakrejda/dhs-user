@@ -1,0 +1,56 @@
+- name: "wants_no_more"
+  stage: 1
+  definition: "stated desire for no more children on any question."
+  values: "boolean"
+  relevant_columns:   ## This is partial information:
+    - "v605 >= 5 & v605 < 7"
+- name: "sterilized"
+  stage: 1
+  definition: "this may be indicated in the same columns as 'wants_no_more'"
+  values: "boolean"
+  relevant_columns: 
+    - "v605"
+- name: "pregnant"
+  stage: 1
+  definition: "pregnancy indicated by any question"
+  values: "boolean"
+  relevant_columns:
+    - "v213"
+    - "m6.1"
+    - "m6_1"
+- name: "time_since_period"
+  stage: 1
+  definition: "time since last period indicated by any question."
+  values: "real"
+  units: "months"
+  relevant_columns:
+    - "v215"
+- name: "time_since_birth"
+  stage: 1
+  definition: "time since most recent birth indicated by any question."
+  values: "real"
+  units: "months"
+  relevant_columns:
+    - "v008"
+    - "b3.01"
+    - "v222"  ## Direct question starting from round 7
+- name : "wanted_last"
+  stage: 2
+  definition: "stated that the current or most recent pregnancy was wanted"
+  relevant_columns:
+    - "v225"
+    - "m10.1"
+    - "m10_1"
+    - "v213"
+
+------
+    
+- name : "ppa"
+  stage: 2
+  definition: "amenorhea, post-partum, under 60 days it is _assumed_, over
+               60 days true only if indicated by any question"
+  relevant_columns:
+    - "time_since_birth"
+    - "time_since_period"
+
+
