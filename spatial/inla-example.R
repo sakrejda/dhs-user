@@ -1,8 +1,10 @@
 library(INLA)
 library(dplyr)
 
-## Load processed data, merge it with spatial locations, rename 
-#  columns.
+# Load processed data, merge it with spatial locations, rename 
+# columns.  The bake-in is the same as the main data merge example
+# and hopefully can be baked-out.
+
 ke42d = readRDS('kenya-output/ke42.rds') %>%
   dplyr::mutate(country = substr(v000, 1, 2), phase = substr(v000, 3, 3), year = v007,
     method = method, unmet = unmettot, dhs_cluster = v001) %>%
@@ -24,10 +26,19 @@ ke42d = readRDS('kenya-output/ke42.rds') %>%
     by = c('dhs_cluster')
   ) %>% ungroup() %>% dplyr::mutate(cpr = (modern + traditional) / total)
 
+# This is just the bounding box based on the data:
 boundaries = sapply( X = ke42d[,c('longitude', 'latitude')], 
   FUN = function(x) c(min(x, na.rm=TRUE), max(x, na.rm=TRUE))) %>%
   `rownames<-`(c('min','max'))
 
+# This is the spatial data file.  I should use this to get boundaries of
+# the country so that the mesh can be bounded.
+# FIXME: NOT HERE YET
+
+# Create a mesh for the modeling to happen on.  This is straightforward
+# because at the country scale we can use a fine mesh and INLA will
+# regularize it based on priors/model.  These numbers allow for smaller
+# triangles and a finer mesh around highly-sampled areas.
 mesh = inla.mesh.create.helper(
   points=ke42d[,c('longitude', 'latitude')], 
   cutoff=0.05, 
@@ -35,11 +46,31 @@ mesh = inla.mesh.create.helper(
   max.edge=c(0.4, 0.5)
 )
 
+# Create a lattice for predictions to go on. 
+# FIXME: Currently this is an irregular mesh, I need to make a REGULAR
+#        mesh based on the contour of the country from the shapefile
+#        import above.... that code is in the splines spatial manipulation
+#        file.
+projection_mesh = inla.mesh.projector(
+  mesh = mesh, loc = mesh$loc)
+
+# I don't understand these priors but they're something generic 
+# implemented in one of the INLA vignettes.  Spatial patterns in
+# the estimated latent field show up with these so the next step is
+# to ... understand them better and see if it's possible to get more
+# structure to show up around the cities.
 sigma0 = 1
 range0 = 0.5
 kappa0 = sqrt(8)/range0
 tau0 = 1/(sqrt(4*pi)*kappa0*sigma0)
 
+# This is creating the spatial strucutre from the priors.  I don't
+# understand the details very well here although the background
+# materials here are good so it won't be an issue.
+# Among others use:
+#  - https://arxiv.org/pdf/1802.06350.pdf
+#  - http://www.maths.ed.ac.uk/~flindgre/rinla/isbaspde.pdf
+
 spde = inla.spde2.matern(
   mesh = mesh,
   B.tau = cbind(log(tau0),1,0),
@@ -48,49 +79,106 @@ spde = inla.spde2.matern(
   theta.prior.prec = 1
 )
 
+# A is a matrix that projects from an m-vector of m mesh-point
+# effects to an n-vector of n observation locations.  So A
+# is n rows by m columns.  Locations are measurement locations
+# so in our case cluster locations and index is observation index
+# here we have no replicates although a final model will and that
+# will allow us to estimate time-constant spatial effects.
 A = inla.spde.make.A(
   mesh = mesh, 
   loc = as.matrix(ke42d[,c('longitude', 'latitude')]), 
   index = 1:nrow(ke42d), 
-  repl = rep(1, nrow(ke42d))
 )
 
-spde = inla.spde2.matern(
+# A_predictive is a matrix that projects form an m-vector of m
+# mesh-points to a p-vector of p lattice points (these are the 
+# regularly spaced points we want predictions on s.t. we can
+# make nice raster plots of the surface we are estimating.
+# This depends on the projection_mesh locations (from above).
+A_predictive = inla.spde.make.A(
   mesh = mesh,
-  B.tau = cbind(log(tau0),1,0),
-  B.kappa = cbind(log(kappa0),0,1),
-  theta.prior.mean = c(0,0),
-  theta.prior.prec = 1
+  loc = projection_mesh$loc)
+
+# A 'stack' is an INLA 'data' object that can be used both for
+# dependent variables, covariates, spatial locations, etc... 
+# it also holds the projection matrix A and validates it against
+# the covariates we want to apply.  
+# 
+# The model we are shooting for here is a spatial effect plus
+# an intercept.
+data_stack = inla.stack(
+  data = list(cpr = ke42d$cpr), 
+  A = list(A), 
+  effects = list(c(
+    inla.spde.make.index("spatial", spde$n.spde),
+    list(intercept = rep(1, spde$n.spde))
+  )), 
+  tag = 'estimation'
 )
 
-
-stk = inla.stack(
-  data = list(resp = ke42d$cpr), 
-  A = list(A,1), 
-  effects = list(
-    i = 1:spde$n.spde, 
-    m = rep(1:nrow(ke42d))
-  ), 
-  tag = 'est'
+# This prediction stack is going to have the response imputed
+# based on the model during fitting.  It holds the predictive
+# projection matrix (A_predictive) and the same covariates as
+# available (just the spatial ones).  It can have fewer covariates
+# that the data model if they are not used for prediciton, or
+# so it seems from the doc.
+prediction_stack = inla.stack(
+  data = list(cpr = rep(NA)), 
+  A = list(A_predictive),
+  effects = list(c(
+    inla.spde.make.index("spatial", spde$n.spde),
+    list(intercept = rep(1, spde$n.spde))
+  )),
+  tag = 'prediction'
 )
 
+# The nice thing about INLA and 'stack' objects is that
+# R-INLA has a lot of helper functions for manipulating
+# them.  Here we combine the two so that predictions are
+# made during the estimation step.
+stack = inla.stack(data_stack, prediction_stack)
+
+# Estimation step, the model here is just an intercept 
+# plus spatial model (matern covariance function, priors
+# from above.  The family is 'logistic' but I can break
+# out components of 'cpr' and use the 'binomial' family
+# to get the right link function in prediction for free.
+#
+# - Hm... don't recall exactly why the control.predictor "A"
+#   is required.  
+# - The link control.predictor is required only
+#   because the logistic family assumes an identity link...
+#   because it's the wrong family. 
+# - The 'compute' control.predictor makes sure posterior
+#   predictors are computed (so that the NA's in the 
+#   prediction stack are filled in.
 inla_m = inla(
-  formula = ke42d$cpr ~ 0 + f(i, model=spde_model), 
-  family='logistic', 
-  data=inla.stack.data(stk), 
-  control.predictor=list(A=inla.stack.A(stk))
+  formula = cpr ~ 1 + f(spatial, model = spde), 
+  family = 'logistic', 
+  data = inla.stack.data(stack, spde = spde), 
+  control.predictor = list(
+    A = inla.stack.A(stack),
+    predictor = list(link='logit'),
+    compute = TRUE
+  )
 )
 
+# This is the non-transformed estimated spatial field.
 inla_field = inla.spde2.result(
   inla = inla_m, 
-  name = 'i', 
+  name = 'spatial', 
   spde = spde
 )
 
-
+# We project this field onto a grid and show it.... hey, 
+# there's _some_ kind of spatial pattern.
 grid = inla.mesh.projector(mesh, dims=c(200, 200))
-
 grid_projection = inla.mesh.project(grid, inla_field$summary.values$mean)
+image(grid_projection)
+
+# This gets the stack indexes for the filled-in NA's
+prediction_index <- inla.stack.index(stack, 'prediction')$data
 
 
 
