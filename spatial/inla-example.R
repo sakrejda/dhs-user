@@ -24,7 +24,7 @@ ke42d = readRDS('kenya-output/ke42.rds') %>%
       dplyr::mutate(longitude = dplyr::if_else(longitude == 0, as.numeric(NA), longitude), 
         latitude = if_else(latitude == 0, as.numeric(NA), latitude)),
     by = c('dhs_cluster')
-  ) %>% ungroup() %>% dplyr::mutate(cpr = (modern + traditional) / total)
+  ) %>% ungroup() %>% dplyr::mutate(all = (modern + traditional) )
 
 # This is just the bounding box based on the data:
 boundaries = sapply( X = ke42d[,c('longitude', 'latitude')], 
@@ -108,7 +108,7 @@ A_predictive = inla.spde.make.A(
 # The model we are shooting for here is a spatial effect plus
 # an intercept.
 data_stack = inla.stack(
-  data = list(cpr = ke42d$cpr), 
+  data = list(all = ke42d$all), 
   A = list(A), 
   effects = list(c(
     inla.spde.make.index("spatial", spde$n.spde),
@@ -124,7 +124,7 @@ data_stack = inla.stack(
 # that the data model if they are not used for prediciton, or
 # so it seems from the doc.
 prediction_stack = inla.stack(
-  data = list(cpr = rep(NA)), 
+  data = list(all = rep(NA)), 
   A = list(A_predictive),
   effects = list(c(
     inla.spde.make.index("spatial", spde$n.spde),
@@ -154,12 +154,16 @@ stack = inla.stack(data_stack, prediction_stack)
 #   predictors are computed (so that the NA's in the 
 #   prediction stack are filled in.
 inla_m = inla(
-  formula = cpr ~ 1 + f(spatial, model = spde), 
-  family = 'logistic', 
+  formula = all ~ 1 + f(spatial, model = spde), 
+  family = 'binomial',
+  Ntrials = c(ke42d[['total']], rep(mean(ke42d[['total']]), 1511)),
   data = inla.stack.data(stack, spde = spde), 
+  control.family = list(
+    link = 'logit'
+  ),
   control.predictor = list(
     A = inla.stack.A(stack),
-    predictor = list(link='logit'),
+    link = 1,
     compute = TRUE
   )
 )
@@ -174,12 +178,43 @@ inla_field = inla.spde2.result(
 # We project this field onto a grid and show it.... hey, 
 # there's _some_ kind of spatial pattern.
 grid = inla.mesh.projector(mesh, dims=c(200, 200))
-grid_projection = inla.mesh.project(grid, inla_field$summary.values$mean)
-image(grid_projection)
+grid_projection = inla.mesh.project(grid, inla_field$summary.values$mean) %>% 
+  data.frame(check.names=FALSE) %>%
+  dplyr::mutate(latitude = grid$y) %>% 
+  tidyr::gather(longitude_index, value, -latitude) %>%
+  dplyr::mutate(longitude = grid$x[as.numeric(longitude_index)]) %>%
+  dplyr::filter(!is.na(value))
 
-# This gets the stack indexes for the filled-in NA's
+pl_field <- ggplot(
+  data=grid_projection, 
+  aes(x=longitude, y=latitude, fill=value)
+) + geom_raster()
+
+
+# This gets the stack indexes for the filled-in NA's and 
+# uses them to pull out NA values only for the prediction points
 prediction_index <- inla.stack.index(stack, 'prediction')$data
+prediction_values <- inla_m$summary.fitted.values$mean
+predictions_only <- prediction_values[prediction_index]
 
+# Re-project prediction points onto a regular lattice, 
+# then munge and plot:
+prediction_grid_projection = inla.mesh.project(grid, predictions_only) %>% 
+  data.frame(check.names=FALSE) %>%
+  dplyr::mutate(latitude = grid$y) %>% 
+  tidyr::gather(longitude_index, value, -latitude) %>%
+  dplyr::mutate(longitude = grid$x[as.numeric(longitude_index)]) %>%
+  dplyr::filter(!is.na(value))
+
+pl_prediction_field <- ggplot(
+  data=prediction_grid_projection, 
+  aes(x=longitude, y=latitude, fill=value)
+) + geom_raster() +
+    theme_minimal() +
+    scale_x_continuous("longitude") +
+    scale_y_continuous("latitude") +
+    scale_fill_continuous("CPR, est.") +
+    ggtitle("Kenya, survey 4-2, estimated CPR") 
 
 
 
