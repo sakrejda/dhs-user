@@ -1,0 +1,19 @@
+<h1 id="rerecode">ReRecode</h1>
+<p>Metadata for recoding DHS-recode columns</p>
+<h2 id="short-descriptions">Short descriptions:</h2>
+<ol style="list-style-type: decimal">
+<li>name: &quot;name of the column we generate, avoid acronyms in stage 1, any acronyms must be obvious from the 'definition' field.&quot;</li>
+<li>stage:
+<ol style="list-style-type: decimal">
+<li>columns generated from coded DHS columns, potentially defined differently in different surveys.</li>
+<li>columns generated only from stage 1 columns or DHS columns that are constant across all surveys.</li>
+</ol></li>
+<li>definition: definition of the generated column, this should capture be verbose enough to capture different treatment of different surveys&quot;</li>
+<li>values:
+<ul>
+<li>boolean: TRUE/FALSE in R, 0/1 in .csv, etc...</li>
+<li>real: &quot;numeric&quot; in R, decimal in .csv, etc..</li>
+<li>integer: &quot;numeric&quot; in R, integers in .csv, etc...</li>
+</ul></li>
+<li>units: &quot;for real/integer values the unit being tracked&quot;</li>
+</ol>
