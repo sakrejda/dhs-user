@@ -43,7 +43,7 @@ insert_internal_codes <- function(file_index) {
     unzip(zipfile = zip_file, files = dta_files, exdir = scratch)
     for (f in dta_files) {
       dta_f = try(haven::read_dta(file = file.path(scratch, f)))
-      if (class(dta_f) == 'try-error') {
+      if (isTRUE(length(dta_f)) == 1 && class(dta_f) == 'try-error') {
         file_index[[zip_file]][['bad_dta_file']] <- c(
           file_index[[zip_file]][['bad_dta_file']], dta_f)
         next
