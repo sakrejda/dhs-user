@@ -22,7 +22,7 @@ list_files <- function(f) {
 
 #' While DHS data _usually_ encodes the survey code (country, round, and
 #' release) in the file names, sometimes these are not correct.  It is 
-#' possible to run a straightforward check by peaking in the contained
+#' possible to run a straightforward check by looking in the contained
 #' Stata files and generating an independent label from the 'v000' column
 #' which concatenates the country code and the DHS round (not release) 
 #' code.  This function takes a list produced by `list_files` and 
@@ -42,7 +42,7 @@ insert_internal_codes <- function(file_index) {
     dta_files = internal_files[internal_files %>% sapply(has_extension, e='dta')]
     unzip(zipfile = zip_file, files = dta_files, exdir = scratch)
     for (f in dta_files) {
-      dta_f = try(haven::read_dta(file = file.path(scratch, f)))
+      dta_f = try(readstata13::read.dta(file = file.path(scratch, f)))
       if (isTRUE(length(dta_f) == 1) && class(dta_f) == 'try-error') {
         file_index[[zip_file]][['bad_dta_file']] <- c(
           file_index[[zip_file]][['bad_dta_file']], dta_f)
@@ -59,6 +59,8 @@ insert_internal_codes <- function(file_index) {
       }
       rm(dta_f); gc()
     }
+    junk <- dir(path = scratch, full.names=TRUE)
+    file.remove(junk, recursive=TRUE)
   }
   return(file_index)
 }
