@@ -42,7 +42,7 @@ insert_internal_codes <- function(file_index) {
     dta_files = internal_files[internal_files %>% sapply(has_extension, e='dta')]
     unzip(zipfile = zip_file, files = dta_files, exdir = scratch)
     for (f in dta_files) {
-      dta_f = try(readstata13::read.dta(file = file.path(scratch, f)))
+      dta_f = try(readstata13::read.dta13(file = file.path(scratch, f)))
       if (isTRUE(length(dta_f) == 1) && class(dta_f) == 'try-error') {
         file_index[[zip_file]][['bad_dta_file']] <- c(
           file_index[[zip_file]][['bad_dta_file']], dta_f)
