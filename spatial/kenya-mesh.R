@@ -80,8 +80,8 @@ country_boundaries <-
 # The mesh  _also_ needs to respect where population
 # is so we us the country boundary as the inner boundary and the
 # sampling points to figure out where to concentrate triangles.
-pts <- readRDS('gps/merged-points.rds')
-obs_locations = do.call(rbind, pts)[,c('longitude', 'latitude')] %>% as.matrix
+clusters <- readRDS('gps/merged-points.rds')
+obs_locations = do.call(rbind, clusters)[,c('longitude', 'latitude')] %>% as.matrix
 kenya_mesh <- inla.mesh.2d(
   loc = obs_locations, 
   interior = country_boundaries,  ## here's where the country boundary comes in.
@@ -140,6 +140,13 @@ connection_list = kenya_mesh$graph$vv %>% Matrix::tril() %>%
 connections = mapply(FUN = function(i, j) if(length(j) != 0) cbind(i, j) else NULL,
   i = 1:length(connection_list), j = connection_list) %>%
   do.call(what = rbind, args = .)
+
+# Now we need to create a projection from the mesh points to the
+# cluster locations:
+kenya_mesh_to_clusters = inla.spde.make.A(kenya_mesh, obs_locations)
+irrelevant_mesh_points = which(colSums(kenya_mesh_to_clusters) == 0) # could drop?
+
+
 
 
 
