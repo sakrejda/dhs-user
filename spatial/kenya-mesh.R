@@ -12,20 +12,14 @@ for (l in libs) library(l, character.only=TRUE)
 spatial_data <- 'gps'
 survey_data <- 'survey'
 
-# We do this so that we can plot counties and have them labeled:
-# The objects are:
+
+# We need county-level shapes and labels, including places to put labels
+# in multiple formats, the objects at the county level are:
 #   1) county_shapes - SpatialPolygonsDataFrame for county data
 #   5) county_json - same data, geojson format.
 #   3) county_shapes_df - ggplot-friendly version of county shapes
 #   4) county_data_df - basic county-level data for merging,
 #        includes centroids.
-#   5) pl_county_map map of counties, with labels
-#   6) country_shape - SpatialPolygonsDataFrame for Kenya
-#   7) kenya_mesh - INLA mesh for Kenya
-#   8) kenya_mesh_triangles - INLA mesh in ggplot-friendly form
-#   9) pl_county_map_w_mesh map of counties, with labels, with mesh
-#  10) pl_county_map_w_mesh_no_label map of counties, with mesh
-#  11) connections, the node indexes as required for ICAR in Stan.
 county_shapes <- rgdal::readOGR(spatial_data, 'kenya-counties')
 county_shapes@data <- county_shapes@data %>% 
   dplyr::rename(id = OBJECTID, area = AREA, perimeter = PERIMETER,
@@ -46,6 +40,9 @@ county_centroids_df = data.frame(
 
 county_data_df = county_shapes@data %>% left_join(county_centroids_df, by='county_name')
 
+# The county-level map with labels confirms (vs. online maps) 
+# that the right county-level data goes with the right shape:
+
 pl_county_map <- ggplot() + geom_polygon(
   data = county_shapes_df, 
   aes(x=longitude, y=latitude, group=group), 
@@ -59,9 +56,10 @@ pl_county_map <- ggplot() + geom_polygon(
 
 # We need country-level data (using from GADM here) so that 
 # we can have a spatial mesh that respects the country bounaries
-# without distortion.  It _also_ needs to respect where population
-# is so we us the country boundary as the inner boundary and the
-# sampling points to figure out where to concentrate triangles.
+# without distortion.  The country-level map needs to be simplified
+# to avoid tiny triangles at the boundaries, and we cut out
+# islands for the same reason.
+
 country_shape <- readRDS(file.path(spatial_data, 'KEN_adm0.rds'))
 country_json <- geojsonio::geojson_json(country_shape) %>%
   rmapshaper::ms_filter_islands(min_area = 0.02) %>%
@@ -72,27 +70,36 @@ geojsonio::geojson_write(input = country_json, file = 'kenya-country.geojson')
 country_shape <- 'kenya-country.geojson' %>% 
   geojsonio::geojson_read(method='local', what = 'sp') 
 
+
+# In the INLA mesher we need to pass the simplified country boundary 
+# as a inla.mesh.segment object
 country_boundaries <-
   inla.mesh.2d(boundary=list(country_shape), cutoff = 0.2, max.edge = .8) %>%
   inla.mesh.boundary()
 
+# The mesh  _also_ needs to respect where population
+# is so we us the country boundary as the inner boundary and the
+# sampling points to figure out where to concentrate triangles.
 pts <- readRDS('gps/merged-points.rds')
 obs_locations = do.call(rbind, pts)[,c('longitude', 'latitude')] %>% as.matrix
 kenya_mesh <- inla.mesh.2d(
   loc = obs_locations, 
-  interior = country_boundaries,
+  interior = country_boundaries,  ## here's where the country boundary comes in.
   cutoff = 0.1, 
   max.edge=c(0.6)
 )
-plot(kenya_mesh, asp=1)
 
+# Quick visualization of the mesh:  plot(kenya_mesh, asp=1)
+
+# Extract the mesh into ggplot-compatible data frame:
 idx = cbind(kenya_mesh$graph$tv[, c(1:3, 1), drop=FALSE], NA)
 x = kenya_mesh$loc[t(idx), 1]
 y = kenya_mesh$loc[t(idx), 2]
 kenya_triangles_df <- data.frame(x=x, y=y, group=1:length(x))
 
 
-## Visualize the mesh to see that it's doing what we want:
+## Visualize the mesh to see that it's doing what we want
+#  _with_ county labels here.
 pl_county_map_w_mesh <- ggplot() + geom_polygon(
   data = county_shapes_df, 
   aes(x=longitude, y=latitude, group=group), 
@@ -107,8 +114,7 @@ pl_county_map_w_mesh <- ggplot() + geom_polygon(
   fill='white'
 ) + theme_minimal() + coord_fixed()
 
-
-## Visualize the mesh to see that it's doing what we want:
+# Without county labels
 pl_county_map_w_mesh_no_label <- ggplot() + geom_polygon(
   data = county_shapes_df, 
   aes(x=longitude, y=latitude, group=group), 
@@ -119,11 +125,9 @@ pl_county_map_w_mesh_no_label <- ggplot() + geom_polygon(
   alpha = 0.1
 ) + theme_minimal() + coord_fixed()
 
-# Also keep these in GEOJSON.
-
+# Print out:
 pdf(file='kenya-map-with-mesh.pdf', height=12, width=12); print(pl_county_map_w_mesh); dev.off()
 pdf(file='kenya-map-with-mesh-no-label.pdf', height=12, width=12); print(pl_county_map_w_mesh_no_label); dev.off()
-
 
 # Now that it looks good, collect the goods.  Specifically, 
 # 'connections' contains a matrix with one connection per
