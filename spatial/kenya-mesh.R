@@ -2,11 +2,11 @@
 # 1) 'gps' for county shapefiles and for cluster location data.
 # 2) 'survey' for individual recode survey files
 
-## Some of these libraries are hard to install.  That sucks.
+## Some of these libraries are hard to install.  That sucks (for you).
 libs <- c('maptools', 'ggplot2', 'dplyr', 
           'magrittr', 'ggrepel', 'INLA',
           'rmapshaper', 'geojson', 'geojsonio',
-          'rgdal')
+          'rgdal', 'spdep')
 for (l in libs) library(l, character.only=TRUE)
 
 spatial_data <- 'gps'
@@ -77,11 +77,29 @@ country_boundaries <-
   inla.mesh.2d(boundary=list(country_shape), cutoff = 0.2, max.edge = .8) %>%
   inla.mesh.boundary()
 
+# Some things need to be done w.r.t. to the sampled data points:
+clusters <- readRDS('gps/merged-points.rds') %>% do.call(rbind, .) %>%
+  dplyr::mutate(row_id = 1:n())
+obs_locations = clusters[,c('longitude', 'latitude')] %>% as.matrix
+rownames(obs_locations) <- clusters[['row_id']]
+misplaced_locations <- apply(obs_locations, 1, function(x) any(is.na(x)))
+sp_locations = SpatialPointsDataFrame(
+  coords = obs_locations[!misplaced_locations,], 
+  proj4string = sp::CRS(proj4string(county_shapes)),
+  data = dplyr::select(clusters, row_id, cluster_id, stratum, year, 
+    country, stratum) %>% `[`(!misplaced_locations, )
+)
+
+# We locate the clusters to the county map s.t. we can fit county
+# effects and apply them to cluster.
+located_clusters = sp::over(sp_locations, county_shapes) %>%
+  dplyr::mutate(row_id = sp_locations@data[['row_id']]) %>%
+  dplyr::select(row_id, id, county_name, area, perimeter) %>%
+  dplyr::right_join(y = clusters, by = c('row_id'))
+
 # The mesh  _also_ needs to respect where population
 # is so we us the country boundary as the inner boundary and the
 # sampling points to figure out where to concentrate triangles.
-clusters <- readRDS('gps/merged-points.rds')
-obs_locations = do.call(rbind, clusters)[,c('longitude', 'latitude')] %>% as.matrix
 kenya_mesh <- inla.mesh.2d(
   loc = obs_locations, 
   interior = country_boundaries,  ## here's where the country boundary comes in.
@@ -146,7 +164,21 @@ connections = mapply(FUN = function(i, j) if(length(j) != 0) cbind(i, j) else NU
 kenya_mesh_to_clusters = inla.spde.make.A(kenya_mesh, obs_locations)
 irrelevant_mesh_points = which(colSums(kenya_mesh_to_clusters) == 0) # could drop?
 
+# We also want county-level connections list for the county-level 
+# ICAR model.
 
+county_neighbors <- spdep::poly2nb(
+  pl = county_shapes, 
+  row.names = county_shapes@data[['county_name']],
+  snap = 0.01)
 
+names(county_neighbors) <- attr(county_neighbors, 'region.id')
+named_county_neighbors <- lapply(county_neighbors, function(x) x <- names(county_neighbors)[x])
+
+county_connections =  mapply(FUN = function(i, j) if(length(j) != 0) cbind(i, j) else NULL,
+    i = 1:length(county_neighbors), j = county_neighbors) %>%
+  do.call(what = rbind, args = .) %>% 
+  apply(1, sort) %>% t %>% `[`(order(.[,1]),) %>% 
+  data.frame %>% unique
 
 
