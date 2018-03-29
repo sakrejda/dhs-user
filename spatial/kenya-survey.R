@@ -22,6 +22,9 @@ is_not_using <- function(method) {
 get_country <- function(cp) substr(cp, 1, 2)
 get_phase <- function(cp) substr(cp, 3, 3)
 
+
+kenya_phase_year_map = c(`4` = 2003, `5` = 2008, `6` = 2014)
+
 # helper:
 # sapply(surveys, function(x) (attr(x$v312, 'labels'))) %>% 
 # `names<-`(NULL) %>% do.call(what=c) %>% 
@@ -40,8 +43,8 @@ is_modern <- function(column) {
 }
 
 is_ever_married <- function(column) {
-  ever_married <- c("currently in union", "living with a man",
-    "currently married", "formerly in union", "formerly living with a man",
+  ever_married <- c("currently in union/living with a man",
+    "currently married", "formerly in union/living with a man",
     "formerly married")
   ever_married_regex = paste(ever_married, sep="", collapse="|")
   is_em <- grepl(pattern = ever_married_regex, x = column)
@@ -81,9 +84,10 @@ for (survey_name in names(surveys)) {
       data[[survey_name]][[target]] <- self_label(surveys[[survey_name]][[column]])
     }
   }
-  data[['country']] <- get_country(data[['country_phase']])
-  data[['phase']] <- get_phase(data[['country_phase']])
-  data[['country_phase']] <- NULL
+  data[[survey_name]][['country']] <- get_country(data[[survey_name]][['country_phase']])
+  data[[survey_name]][['phase']] <- get_phase(data[[survey_name]][['country_phase']])
+  data[[survey_name]][['country_phase']] <- NULL
+  data[[survey_name]][['year']] <- kenya_phase_year_map[data[[survey_name]][['phase']]]
 }
 
 data <- do.call(what=rbind, args=data) %>% dplyr::mutate(
@@ -91,5 +95,13 @@ data <- do.call(what=rbind, args=data) %>% dplyr::mutate(
   ever_married_b = is_ever_married(ever_married))
 
 saveRDS(data, file = file.path(survey_dir, 'standardized-kenya-surveys.rds'))
+
+model_input_data <- data %>% 
+  dplyr::filter(ever_married_b) %>% 
+  dplyr::group_by(survey, cluster_id, household_type, country, phase, year) %>% 
+  dplyr::summarize(weight = unique(weight), cu_modern = sum(uses_modern_method_b), n = n())
+
+
+saveRDS(model_input_data, file = 'standardized-survey-data.rds')
 
 
