@@ -131,6 +131,12 @@ pl_county_map <- ggplot() + geom_polygon(
   fill='white',
 ) + theme_minimal() + coord_fixed()
 
+pl_county_map_no_label <- ggplot() + geom_polygon(
+  data = county_shapes_df, 
+  aes(x=longitude, y=latitude, group=group), 
+  fill='white', colour='black'
+) + theme_minimal() + coord_fixed()
+
 
 ## Visualize the mesh to see that it's doing what we want
 #  _with_ county labels here.
@@ -160,6 +166,8 @@ pl_county_map_w_mesh_no_label <- ggplot() + geom_polygon(
 ) + theme_minimal() + coord_fixed()
 
 # Print out:
+pdf(file='kenya-map.pdf', height=12, width=12); print(pl_county_map); dev.off()
+pdf(file='kenya-map-no-label.pdf', height=12, width=12); print(pl_county_map_no_label); dev.off()
 pdf(file='kenya-map-with-mesh.pdf', height=12, width=12); print(pl_county_map_w_mesh); dev.off()
 pdf(file='kenya-map-with-mesh-no-label.pdf', height=12, width=12); print(pl_county_map_w_mesh_no_label); dev.off()
 

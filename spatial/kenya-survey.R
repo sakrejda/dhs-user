@@ -20,7 +20,14 @@ is_not_using <- function(method) {
 }
 
 get_country <- function(cp) substr(cp, 1, 2)
-get_phase <- function(cp) substr(cp, 3, 3)
+get_phase <- function(cp) {
+  if (all(nchar(cp) == 3)) {
+    return(substr(cp, 3, 3))
+  } else if (all(nchar(cp) == 2)) {
+    return(1)
+  }
+  stop("No phase in country + phase label.")
+}
 
 
 kenya_phase_year_map = c(`4` = 2003, `5` = 2008, `6` = 2014)
@@ -56,19 +63,31 @@ lapply(libs, library, character.only=TRUE)
 
 survey_dir <- 'survey'
 surveys = list(
-  ke4 = haven::read_dta(file = file.path(survey_dir, 'KEIR42FL.DTA')),
-  ke5 = haven::read_dta(file = file.path(survey_dir, 'KEIR52FL.DTA')),
-  ke7 = haven::read_dta(file = file.path(survey_dir, 'KEIR71FL.DTA'))
+  ke03 = haven::read_dta(file = file.path(survey_dir, 'KEIR03FL.DTA')),
+  ke33 = haven::read_dta(file = file.path(survey_dir, 'KEIR33FL.DTA')),
+  ke3a = haven::read_dta(file = file.path(survey_dir, 'KEIR3AFL.DTA')),
+  ke42 = haven::read_dta(file = file.path(survey_dir, 'KEIR42FL.DTA')),
+  ke52 = haven::read_dta(file = file.path(survey_dir, 'KEIR52FL.DTA')),
+  ke71 = haven::read_dta(file = file.path(survey_dir, 'KEIR71FL.DTA'))
 ) %>% lapply(function(d) { colnames(d) <- tolower(colnames(d)); return(d)})
 
 requirements <- list(
-  ke4 = c(case_id = 'caseid', country_phase = 'v000', cluster_id = 'v001', 
+  ke03 = c(case_id = 'caseid', country_phase = 'v000', cluster_id = 'v001',
+           weight = 'v005', ever_married = 'v502',
+           household_type = 'v102', contraceptive_method = 'v312'),
+  ke33 = c(case_id = 'caseid', country_phase = 'v000', cluster_id = 'v001',
+           weight = 'v005', ever_married = 'v502', 
+           household_type = 'v102', contraceptive_method = 'v312'),
+  ke3a = c(case_id = 'caseid', country_phase = 'v000', cluster_id = 'v001',
+           weight = 'v005', ever_married = 'v502', 
+           household_type = 'v102', contraceptive_method = 'v312'),
+  ke42 = c(case_id = 'caseid', country_phase = 'v000', cluster_id = 'v001', 
            weight = 'v005', ever_married = 'v502', 
            household_type = 'v102', contraceptive_method = 'v312'), 
-  ke5 = c(case_id = 'caseid', country_phase = 'v000', cluster_id = 'v001', 
+  ke52 = c(case_id = 'caseid', country_phase = 'v000', cluster_id = 'v001', 
            weight = 'v005', ever_married = 'v502', 
            household_type = 'v102', contraceptive_method = 'v312'), 
-  ke7 = c(case_id = 'caseid', country_phase = 'v000', cluster_id = 'v001', 
+  ke71 = c(case_id = 'caseid', country_phase = 'v000', cluster_id = 'v001', 
            weight = 'v005', ever_married = 'v502', 
            household_type = 'v102', contraceptive_method = 'v312')
 )

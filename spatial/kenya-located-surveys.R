@@ -8,4 +8,10 @@ located_surveys <- dplyr::left_join(
     area, perimeter, longitude, latitude, stratum, county_idx)
 )
 
+saveRDS(located_surveys, file='located-surveys.rds')
+
+model_data <- list(
+  n_obs = nrow(located_surveys),
+  n_levels = 2,  # cluster, county  
+
 
