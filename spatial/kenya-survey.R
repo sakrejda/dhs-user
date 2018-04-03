@@ -30,7 +30,8 @@ get_phase <- function(cp) {
 }
 
 
-kenya_phase_year_map = c(`4` = 2003, `5` = 2008, `6` = 2014)
+kenya_phase_year_map = c(`1` = 1989, `2` = 1993, `3` = 1998,
+                         `4` = 2003, `5` = 2008, `6` = 2014)
 
 # helper:
 # sapply(surveys, function(x) (attr(x$v312, 'labels'))) %>% 
