@@ -19,6 +19,25 @@ located_surveys <- dplyr::left_join(
 
 saveRDS(located_surveys, file='located-surveys.rds')
 
+unit_summaries <- located_surveys %>% 
+  dplyr::group_by(county_idx, year_idx, hh_type_idx) %>% 
+  dplyr::summarise()                                          
+
+saveRDS(unit_summaries, file = 'sampled-unit-summaries.rds')
+
+idx <- list()
+l <- vector(mode='numeric', length = nrow(unit_summaries))
+for (i in 1:nrow(unit_summaries)) {
+  idx[[i]] = located_surveys %>% dplyr::mutate(idx = 1:n()) %>%
+    dplyr::filter(
+      county_idx == unit_summaries[['county_idx']][i],
+      year_idx == unit_summaries[['year_idx']][i]
+    ) %>% dplyr::select(idx) %>% unlist(use.names=FALSE)
+  l[i] = length(idx[[i]])
+}
+
+ends <- cumsum(l)
+starts <- cumsum(l) - l + 1
 
 stan_env <- new.env()
 with(data = stan_env, expr = {
@@ -40,7 +59,15 @@ with(data = stan_env, expr = {
   hh_type_idx = located_surveys[['household_type_idx']]
   year_idx = located_surveys[['year_idx']]
   survey_year_idx = located_surveys[['survey_year_idx']]
+
+  n_sampled = nrow(unit_summaries)
+  sampled_unit_idx = unit_summaries[['county_idx']]
+  sampled_year_idx = unit_summaries[['survey_year_idx']]
+  sampled_start_idx = starts
+  sampled_obs_idx = ends
+  sampled_obs_idx = do.call(what=c, args=idx)
 })
+
 
 saveRDS(stan_env, file = 'stan-data-env.rds')
 rstan::stan_rdump(list = ls(stan_env), file = 'stan-data.rdump', envir = stan_env)
