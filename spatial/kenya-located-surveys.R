@@ -20,7 +20,7 @@ located_surveys <- dplyr::left_join(
 saveRDS(located_surveys, file='located-surveys.rds')
 
 unit_summaries <- located_surveys %>% 
-  dplyr::group_by(county_idx, year_idx, hh_type_idx) %>% 
+  dplyr::group_by(county_idx, year_idx) %>% 
   dplyr::summarise()                                          
 
 saveRDS(unit_summaries, file = 'sampled-unit-summaries.rds')
@@ -62,10 +62,10 @@ with(data = stan_env, expr = {
 
   n_sampled = nrow(unit_summaries)
   sampled_unit_idx = unit_summaries[['county_idx']]
-  sampled_year_idx = unit_summaries[['survey_year_idx']]
+  sampled_year_idx = unit_summaries[['year_idx']]
   sampled_start_idx = starts
-  sampled_obs_idx = ends
-  sampled_obs_idx = do.call(what=c, args=idx)
+  sampled_stop_idx = ends
+  sampled_cross_idx = do.call(what=c, args=idx)
 })
 
 
