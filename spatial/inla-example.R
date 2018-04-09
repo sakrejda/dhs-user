@@ -43,7 +43,7 @@ mesh = inla.mesh.create.helper(
   points=ke42d[,c('longitude', 'latitude')], 
   cutoff=0.05, 
   offset=c(0.3, 0.6), 
-  max.edge=c(0.4, 0.5)
+  max.edge=c(0.4, 1.5)
 )
 
 # Create a lattice for predictions to go on. 
@@ -168,7 +168,8 @@ inla_m = inla(
   )
 )
 
-# This is the non-transformed estimated spatial field.
+# This is the non-transformed estimated spatial field.  It ignores
+# the intercept and it ignores the transform.
 inla_field = inla.spde2.result(
   inla = inla_m, 
   name = 'spatial', 
@@ -198,7 +199,7 @@ prediction_values <- inla_m$summary.fitted.values$mean
 predictions_only <- prediction_values[prediction_index]
 
 # Re-project prediction points onto a regular lattice, 
-# then munge and plot:
+# then munge.
 prediction_grid_projection = inla.mesh.project(grid, predictions_only) %>% 
   data.frame(check.names=FALSE) %>%
   dplyr::mutate(latitude = grid$y) %>% 
@@ -206,14 +207,65 @@ prediction_grid_projection = inla.mesh.project(grid, predictions_only) %>%
   dplyr::mutate(longitude = grid$x[as.numeric(longitude_index)]) %>%
   dplyr::filter(!is.na(value))
 
-pl_prediction_field <- ggplot(
-  data=prediction_grid_projection, 
-  aes(x=longitude, y=latitude, fill=value)
-) + geom_raster() +
-    theme_minimal() +
+# Grab estimated uncertainty
+uncertainty_index <- inla.stack.index(stack, 'prediction')$data
+uncertainty_values <- inla_m$summary.fitted.values$sd
+uncertainty_only <- uncertainty_values[uncertainty_index]
+
+# Re-project prediction points onto a regular lattice, 
+# then munge.
+uncertainty_grid_projection = inla.mesh.project(grid, uncertainty_only) %>% 
+  data.frame(check.names=FALSE) %>%
+  dplyr::mutate(latitude = grid$y) %>% 
+  tidyr::gather(longitude_index, uncertainty, -latitude) %>%
+  dplyr::mutate(longitude = grid$x[as.numeric(longitude_index)]) %>%
+  dplyr::filter(!is.na(uncertainty))
+
+grid_projection <- prediction_grid_projection %>% dplyr::select(-longitude_index) %>%
+  dplyr::left_join(y = uncertainty_grid_projection %>% dplyr::select(-longitude_index))
+
+# Get spatial data for Kenya, filter out older divisions, tranform
+# to a data frame so I can use it with ggplot2.
+kenya_geojson_url = "https://api.dhsprogram.com/rest/dhs/geometry/KE?f=geojson"
+download.file(url = kenya_geojson_url, destfile='/tmp/admin-2-kenya.geojson')
+kenya_map <- geojsonio::geojson_read('/tmp/admin-2-kenya.geojson', what='sp')
+
+
+filtering_data_url <- paste0("https://api.dhsprogram.com/rest/",
+  "dhs/data/KE,SV_BACK_W_NUM?f=csv&breakdown=subnational&f=csv&perpage=3000")
+
+filtering_data <- read.csv(file=filtering_data_url, stringsAsFactors=FALSE) %>%
+  dplyr::filter(grepl('^\\.\\.', x=CharacteristicLabel)) %>%
+  dplyr::select(RegionId) %>% unlist
+
+kenya_map <- kenya_map %>% 
+  subset(CountryName == "Kenya" & RegionID %in% filtering_data) %>%
+  ggplot2::fortify()
+
+# Plot spatial estimates with overlay of Kenya divisions
+# and data.
+pallette <- c('#d7191c','#fdae61','#ffffbf','#abd9e9','#2c7bb6')
+
+pl_prediction_field <- ggplot() + geom_raster(
+  data = grid_projection, 
+  aes(x=longitude, y=latitude, fill=value, alpha = 1 - uncertainty)
+) + geom_path(
+  data = kenya_map,
+  aes(x=long, y=lat, group = paste(group, piece)), 
+  colour='black'
+) + geom_point(
+  data = ke42d,
+  aes(x=longitude, y=latitude, colour = all/total)
+) + theme_minimal() +
     scale_x_continuous("longitude") +
     scale_y_continuous("latitude") +
-    scale_fill_continuous("CPR, est.") +
+    scale_fill_gradientn("CPR, est.", 
+      colours = pallette, values = c(0, 0.25, 0.5, 0.75, 1.0)
+    ) +
+    scale_colour_gradientn("CPR, observed.",
+      colours = pallette, values = c(0, 0.25, 0.5, 0.75, 1.0),
+      guide = "none"
+    ) +
     ggtitle("Kenya, survey 4-2, estimated CPR") 
 
 
