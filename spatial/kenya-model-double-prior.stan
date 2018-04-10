@@ -516,7 +516,7 @@ transformed data {
 
 parameters {
   // Observation parameters
-  vector<lower=0, upper=1>[n_obs] theta;
+  vector[n_obs] theta_star;
 
   // Proportion calculations;
   real P_tilde_w;
@@ -535,7 +535,9 @@ parameters {
 }
 
 transformed parameters {
+  vector[n_obs] theta = inv_logit(theta_star);
   vector[n_sampled] design_theta;
+
   vector[n_sampled] P;
 
   // observation / weighting component
@@ -557,6 +559,9 @@ transformed parameters {
 }
 
 model {
+  // observation
+  theta_star ~ normal(0, 1.5);
+
   // Proportions hierarchical priors
   // Ratio of CPR versus non-use
   // Asymptote
