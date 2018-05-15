@@ -85,6 +85,17 @@ get_expectations <- function(job, logger) {
 }
 
 
+#' Get file extension from path
+#'
+#' @param s path
+#' @return extension
+#' @export
+get_ext <- function(s) {
+  split <- strsplit(x=s, split='\\.')[[1]]
+  ls <- length(split)
+  return(split[ls])
+}
+
 #' Save output
 #'
 #' @param job job description
@@ -99,7 +110,13 @@ save_output <- function(job, output, logger) {
   output_names <- get_expectations(job, logger)
   for (i in 1:length(output_names)) {
     output_path <- file.path(target_dir, output_files[i])
-    saveRDS(output[[output_names[i]]], output_path)
+    logger("Output extension: ", get_ext(output_path))
+    if (get_ext(output_path) == 'rds') {
+      saveRDS(output[[output_names[i]]], output_path)
+    } else if (get_ext(output_path) == 'rdump') {
+      rstan::stan_rdump(list = ls(output[[output_names[i]]]),
+        file = output_path, envir = output[[output_names[i]]])
+    } else logger("Output type not known for object: ", output_names[i])
   }
   return(NULL)
 }
