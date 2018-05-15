@@ -6,7 +6,10 @@
 #' @export
 logger <- function(log_file = tempfile()) { 
   log_file <- log_file
-  log_f <- function(...) cat(paste(..., collapse=", "), file = log_file, sep = "\n", append = TRUE)
+  log_f <- function(...) cat(paste0(..., collapse=", "), file = log_file, sep = "\n", append = TRUE)
+#  of = file(log_file, open = "wt")
+#  sink(type = 'message', file = of)
+  cat(paste0("Starting at: ", Sys.time(), "\n"), file = log_file)
   return(log_f)
 }
 
@@ -19,15 +22,17 @@ logger <- function(log_file = tempfile()) {
 #' @return job
 #' @export
 get_job <- function(instructions, i, logger) {
-  job <- instructions[['default']] %>% purrr::list_merge(instructions[[1]])
-  logger("Job name: ", job[['name']])
-  return(job)
+  job <- instructions[['defaults']] %>% purrr::list_merge(instructions[['runs']][[i]])
+  logger("Job name: ", job[[1]][['name']])
+  return(job[[1]])
 }
 
 #' Retrieve the script to run on.
 #'
 #' @param job
 #' @param logger
+#' @return path to job script
+#' @export
 get_script <- function(job, logger) {
   script_file = paste0(job[['name']], ".R")
   script_path = find_file(job[['source_dir']], script_file)
@@ -45,13 +50,25 @@ get_script <- function(job, logger) {
 #' @return function name as character vector, length-1
 #' @export
 get_function <- function(job, logger) {
-  log("Finding main function.")
+  e = parent.env(parent.frame())
+  logger("Finding main function.")
   function_name <- gsub('-', '_', job[['name']])
-  function_found <- function_name %in% ls(parent.frame())
+  function_found <- function_name %in% ls(e)
   if (!function_found) 
     logger("Function ", function_name, " not found, likely fail.")
-  f <- get(function_name, parent.frame())
+  f <- get(function_name, e)
   return(f)
+}
+
+#' Returns the expected output files from a job:
+#'
+#' @param job a job
+#' @param logger, a logger
+#' @return character vector of expected object names
+#' @export
+get_expected_files <- function(job, logger) { 
+  expect_file <- sapply(job[['outputs']], function(x) x[['file']])
+  return(expect_file)
 }
 
 #' Return the expected outputs from a job:
@@ -73,8 +90,11 @@ get_expectations <- function(job, logger) {
 #' @param job job description
 #' @param output list of output objects
 #' @param logger logger to write log to...
+#' @return NULL
+#' @export
 save_output <- function(job, output, logger) {
   target_dir <- job[['target_dir']]
+  dir.create(path = target_dir, showWarnings = FALSE, recursive = TRUE)
   output_files <- sapply(job[['outputs']], function(x) x[['file']])
   output_names <- get_expectations(job, logger)
   for (i in 1:length(output_names)) {
@@ -94,7 +114,7 @@ scripted <- function(file, log_file = tempfile(), debug=FALSE) {
   instructions <- yaml::yaml.load_file(file)
   n_instructions <- length(instructions[['runs']])
   log <- logger(log_file)
-  log("There are ", n_instructions, " jobs.")
+  log("\n\nThere are ", n_instructions, " jobs.")
 
   for (i in 1:n_instructions) {
     log("Instruction ", i)
@@ -106,9 +126,24 @@ scripted <- function(file, log_file = tempfile(), debug=FALSE) {
     log("Loading script.", script_path)
     source(script_path, echo = debug)
 
-    log("Calling main function.")
+    log("Get expected files.")
+    expected_files <- get_expected_files(job, log)
+    expectations_met <- file.exists(file.path(job[['target_dir']], expected_files))
+    if (all(expectations_met)) {
+      log("All outputs are present, skipping job.")
+      next
+    } else {
+      missing_expectations <- expected_files[!expectations_met]
+      for (f in missing_expectations) {
+        log("Need to produce ", f)
+      }
+    }
+
     o <- NULL
-    o <- do.call(what = get_function(job, log), args = list(source_dir = job[['source_dir']]))
+    main_function <- get_function(job, log)
+
+    log("Calling main function.")
+    o <- main_function(source_dir = job[['source_dir']])
 
     if (!is.null(o)) {
       log("Objects in return are: ")
@@ -119,7 +154,7 @@ scripted <- function(file, log_file = tempfile(), debug=FALSE) {
 
     expected_objects <- get_expectations(job, log)
     log("Expected objects are: ")
-    log(expectted_objects)
+    log(expected_objects)
     if (all(expected_objects %in% names(o))) {
       log("All output found.")
     } else {
