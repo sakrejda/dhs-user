@@ -160,7 +160,7 @@ scripted <- function(file, log_file = tempfile(), debug=FALSE) {
     main_function <- get_function(job, log)
 
     log("Calling main function.")
-    o <- main_function(source_dir = job[['source_dir']])
+    o <- main_function(source_dir = job[['source_dir']], parameters = job[['parameters']])
 
     if (!is.null(o)) {
       log("Objects in return are: ")

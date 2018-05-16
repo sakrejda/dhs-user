@@ -1,5 +1,5 @@
 
-#' Weighted mean with jackknife. 
+#' Weighted mean with jackknife, returns single obs. unprocessed.
 #' 
 #' @param x values to average
 #' @param w weights
@@ -7,6 +7,8 @@
 #' @export
 jackknife_weighted_mean <- function(x, w) {
   o <- vector(mode = 'numeric', length = length(x))
+  if (length(x) == 1)
+    return(x)
   for ( i in 1:length(x)) {
     o[i] <- sum(x[-i] * w[-i])/sum(w[-i])
   }
@@ -57,7 +59,8 @@ jackknife_estimates <- function(data, yes, count, weight,
   data = data %>% dplyr::summarise(
     estimate = jackknife_weighted_mean((!!yes)/(!!count), (!!weight)),
     sd = jackknife_weighted_sd((!!yes)/(!!count), (!!weight)),
-    lb = estimate - 2 * sd, ub = estimate + 2 * sd
+    lb = estimate - 2 * sd, ub = estimate + 2 * sd, 
+    weight = jackknife_weighted_mean((!!weight), (!!weight))
   )
   return(data)
 }
