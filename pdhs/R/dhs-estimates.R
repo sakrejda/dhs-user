@@ -29,7 +29,9 @@ jackknife_weighted_sd <- function(x, w) {
     ri = k * r - (k - 1) * jackknife_weighted_mean(x[-i], w[-i])
     o[i] = (ri - r)^2
   }
-  return(sqrt(1/(k*(k-1)) * sum(o)))
+  o <- sqrt(1/(k*(k-1)) * sum(o))
+  bad <- is.na(o) | is.nan(o)
+  return(o)
 }
 
 
