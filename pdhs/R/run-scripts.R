@@ -43,23 +43,6 @@ get_script <- function(job, logger) {
   return(script_path)
 }
 
-#' Retrieve the implied name of the main function for a script.
-#'
-#' @param job
-#' @param logger
-#' @return function name as character vector, length-1
-#' @export
-get_function <- function(job, logger) {
-  e = parent.env(parent.frame())
-  logger("Finding main function.")
-  function_name <- gsub('-', '_', job[['name']])
-  function_found <- function_name %in% ls(e)
-  if (!function_found) 
-    logger("Function ", function_name, " not found, likely fail.")
-  f <- get(function_name, e)
-  return(f)
-}
-
 #' Returns the expected output files from a job:
 #'
 #' @param job a job
@@ -157,10 +140,8 @@ scripted <- function(file, log_file = tempfile(), debug=FALSE) {
     }
 
     o <- NULL
-    main_function <- get_function(job, log)
-
-    log("Calling main function.")
-    o <- main_function(source_dir = job[['source_dir']], parameters = job[['parameters']])
+    log("Calling script-level main function.")
+    o <- main(source_dir = job[['source_dir']], parameters = job[['parameters']])
 
     if (!is.null(o)) {
       log("Objects in return are: ")

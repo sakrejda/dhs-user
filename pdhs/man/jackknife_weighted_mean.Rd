@@ -2,7 +2,7 @@
 % Please edit documentation in R/dhs-estimates.R
 \name{jackknife_weighted_mean}
 \alias{jackknife_weighted_mean}
-\title{Weighted mean with jackknife.}
+\title{Weighted mean with jackknife, returns single obs. unprocessed.}
 \usage{
 jackknife_weighted_mean(x, w)
 }
@@ -15,5 +15,5 @@ jackknife_weighted_mean(x, w)
 jackknife mean estimate
 }
 \description{
-Weighted mean with jackknife.
+Weighted mean with jackknife, returns single obs. unprocessed.
 }
